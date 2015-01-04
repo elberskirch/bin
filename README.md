@@ -4,6 +4,9 @@ All scripts unless otherwise noted are licensed under the MIT license.
 ## bookie
 I always read books, but at the end of the year I rarely know all books I've read in a year. This script keeps track of books I'm currently reading or have already read, including optional short reviews. 
 
+Info of the script is stored in a json file. Path to this file is expected in the environment variable *BOOKIE_FILE*.
+*EDITOR* must be set as well. 
+
 ### usage
 	$ bookie add -> adds a new book, asks you a ton of questions
     $ bookie list -> lists all currently entered book infos with index numbers
