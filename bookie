@@ -1,0 +1,155 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'thor'
+require 'thor/shell/basic'
+require 'thor/actions'
+require 'ostruct'
+require 'tempfile'
+
+module Bookie
+	class Book 
+
+		def initialize(title, author, review, finished, started)
+			book = OpenStruct.new
+			book.title = title
+			book.author = author
+			book.review = review
+			book.finished = finished
+			book.started = started
+			#puts book.marshal_dump
+			@book = book.marshal_dump
+		end
+
+		def content
+			@book
+		end
+	end 
+
+	class Storage
+		def initialize
+			if File.exists? ENV['BOOKIE_FILE']
+				@books = JSON.parse(File.read(ENV['BOOKIE_FILE'])) 
+			else 
+				@books = Array.new
+			end
+		end
+
+		def add(book)
+			@books.push(book.content)
+		end
+
+		def save
+			File.open("#{ENV['BOOKIE_FILE']}", "w") do |f|
+				f.write(@books.to_json)
+			end
+		end
+
+		def list
+			@books
+		end
+	end 
+
+	class Util
+		include Thor::Base
+		include Thor::Actions
+		include Thor::Shell
+		def self.env_is_set
+			ENV['EDITOR'] && ENV['BOOKIE_FILE']
+		end
+
+		def self.setup
+			if !env_is_set
+  				say("ENV is not correctly set")
+  				exit(-1)
+  			end
+  			storage = Storage.new
+		end
+	end
+
+	class CLI < Thor
+		include Thor::Actions
+		include Thor::Shell
+  		desc "add", "add a new book"
+  		def add()
+
+  			storage = Util.setup
+
+  			title = ask("book title: ")
+    		author = ask("book author: ")
+    		started = ask("book started: ")
+    		finished = ask("book finished: ")
+
+    		t = Tempfile.new('review')
+			run("#{ENV['EDITOR']} #{t.path}", :capture => true)
+			review = File.open(t.path).read
+			t.unlink
+			puts review
+
+			book = Book.new(title, author, review, finished, started)
+			storage.add(book)
+			storage.save
+
+			print(storage.list)
+  		end
+
+  		desc "list", "get book list"
+  		def list()
+  			storage = Util.setup
+  			print(storage.list)
+  		end
+
+  		desc "edit [index]", "edit a review entry"
+  		def edit(index)
+  			storage = Util.setup
+  			books = storage.list
+  			i = index.to_i
+
+  			t = Tempfile.new('review')
+  			t.write(books[i]['review'])
+  			t.close
+  			run("#{ENV['EDITOR']} #{t.path}", :capture => true)
+			review = File.open(t.path).read
+			t.unlink
+			puts review
+			books[i]['review'] = review
+			storage.save
+  		end
+
+  		desc "change index [finished|started]", "change the state of an entry"
+  		def change(index, state)
+  			storage = Util.setup
+  			books = storage.list
+  			i = index.to_i
+  			if state == "finished"
+  				finished = ask("book finished: ")
+  				books[i]['finished'] = finished
+  			elsif state == "started"
+  				started = ask("book started: ")
+  				books[i]['started'] = started
+  			else 
+  				say "[ERROR] use finished or started", :red
+  			end
+  			storage.save
+
+  		end
+
+  		private
+  		def print(books)
+			books.each_index do |book_index|
+				book = books[book_index]
+				say "[#{book_index}] #{book['title']} - #{book['author']} ", nil, false
+				if book['finished'].length == 0
+					if book['started'].length > 0
+						say "[started] #{book['started']} ", :yellow, true
+					else 
+						say "[started]", :yellow, true
+					end
+				else
+					say "[finished] #{book['finished']}", :green, true
+				end
+			end
+  		end
+	end
+end
+
+Bookie::CLI.start(ARGV)
