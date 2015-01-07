@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+require 'pony'
+require 'json'
+
+class KindlePush
+	def self.run(argv)
+
+		if !ENV.key?("KINDLE_EMAIL")
+			puts "ERROR: please set KINDLE_EMAIL in environment"
+			exit(1)
+		end
+
+		if ARGV.length == 0
+			puts "ERROR: Usage => kindle-push FIlENAME"
+			exit(2)
+		end
+
+		file = ARGV[0]
+
+		if !File.exists? file
+			puts "ERROR: Can't open #{file}"
+			exit(3)
+		end
+
+		mailer_config = load_mailer_config
+		printf "Sending #{File.basename(file)} to your kindle email address #{ENV['KINDLE_EMAIL']}..."
+		sendmail(ENV['KINDLE_EMAIL'], "KindlePush", "KindlePush", mailer_config, file)
+		printf "done.\n"
+	end
+
+
+	def self.load_mailer_config
+      mailer_file = File.join(ENV["HOME"],".mailer.json")
+      mailer_config = nil
+      if File.exists?(mailer_file)
+         File.open(mailer_file) do |file|
+            raw_config = file.read
+            mailer_config = JSON.parse(raw_config, :symbolize_names => true)
+         end
+      else
+         puts "PLEASE create a .mailer.json file in your HOME directory"
+         exit
+      end 
+      mailer_config[:smtp]
+   end
+      
+   def self.sendmail(to, subject, body, config, file)
+      Pony.mail({
+               :to => to,
+               :subject => subject,
+               :html_body => body,
+               :via => :smtp,
+               :via_options => config,
+               :attachments => { File.basename(file) => File.read(file) }
+      })
+   end
+
+end
+
+KindlePush.run(ARGV)

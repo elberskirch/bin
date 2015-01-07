@@ -14,3 +14,24 @@ Info of the script is stored in a json file. Path to this file is expected in th
     $ bookie change 1 finished|started -> change finished|started state of book with index 1
 
 Date in the form YYYY-MM-DD recommended. ISO-style!
+
+## kindle-push
+Send files to your kindle through the email service for registered addresses. Expects *KINDLE_EMAIL* as environment variable. Uses the Pony gem for mail handling. 
+
+Here's an example *.mailer.json* for gmail. Make sure to switch to less security enabled mode, otherwise smtp authentication won't work. two-factor auth is up next.
+    {
+      "smtp": {
+          "address" : "smtp.gmail.com",
+          "port" : "587",
+          "enable_starttls_auto" : "true",
+          "user_name" : "USERNAME",
+          "password" : "PASSWD",
+          "authentication" : "plain",
+          "domain" :"localhost.localdomain"
+        }
+    }  
+
+### usage
+    $ kindle-push FILENAME 
+
+Use only supported file types .mobi, .pdf, .txt, .doc etc. otherwise the document won't show up through whispernet.
